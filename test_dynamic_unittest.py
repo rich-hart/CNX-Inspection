@@ -1,3 +1,4 @@
+#http://stackoverflow.com/questions/32899/how-to-generate-dynamic-parametrized-unit-tests-in-python
 import unittest
 
 l = [["page_1", "a", "a",], ["page_2", "a", "b"], ["page_3", "b", "b"]]
