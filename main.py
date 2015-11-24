@@ -1,6 +1,9 @@
 import subprocess
 import os
 
+here = os.path.abspath(os.path.dirname(__file__))
+TRAINING_DATA_DIR = os.path.join(here, 'data')
+
 settings = { 'python-exe': 'python',
              'oer-exports-path': '/home/vagrant/production/oer.exports',
              'print-style': 'ccap-physics',

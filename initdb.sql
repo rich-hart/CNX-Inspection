@@ -1,22 +1,23 @@
-CREATE TABLE zips ( id serial UNIQUE PRIMARY KEY,
-                    zip bytea);
+CREATE TABLE collections ( id serial PRIMARY KEY,
+                           title text,
+                           name text NOT NULL,
+                           version text NOT NULL,
+                           zip bytea,
+                           UNIQUE (name, version));
 
-CREATE TABLE pdfs ( id serial UNIQUE PRIMARY KEY,
-                    pdf bytea); 
+CREATE TABLE pdfs ( id serial PRIMARY KEY,
+                    git_commit char(40) NOT NULL,
+                    style text NOT NULL,
+                    pdf bytea);
 
-CREATE TABLE collections_info ( id serial UNIQUE PRIMARY KEY,
-                                title text,
-                                file_name text,
-                                version text,
-                                style text,
-                                zip_id serial REFERENCES zips(id),
-                                pdf_id serial REFERENCES pdfs(id),
-                                git_commit char(40) UNIQUE);
+CREATE TABLE collections_pdfs (collection serial REFERENCES collections(id),
+                               pdf serial REFERENCES pdfs(id));
+                    
 
-CREATE TABLE pngs_a ( page_number int UNIQUE PRIMARY KEY,
-                      png bytea,
-                      collection_id serial UNIQUE REFERENCES collections_info(id));
+-- CREATE TABLE pngs_a ( page_number serial PRIMARY KEY,
+--                       png bytea NOT NULL,
+--                       pdf_id serial REFERENCES pdfs(id));
 
-CREATE TABLE pngs_b ( page_number int UNIQUE PRIMARY KEY,
-                      png bytea,
-                      collection_id serial UNIQUE REFERENCES collections_info(id));
+-- CREATE TABLE pngs_b ( page_number serial PRIMARY KEY,
+--                       png bytea NOT NULL,
+--                       pdf_id serial REFERENCES pdfs(id));
