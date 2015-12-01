@@ -1,26 +1,31 @@
 import unittest
+import psycopg2
 
 settings = None
 
-
 class GeneralTestCase(unittest.TestCase):
     def __init__(self, methodName, param1=None, param2=None):
-        test_name = "test_pages ({0},{1})".format(param1,param2)
+        test_name = "{0}: params=({1},{2})".format(methodName,param1,param2)
         setattr(GeneralTestCase, test_name,self.runTest)
         super(GeneralTestCase, self).__init__(test_name)
         self.param1 = param1
         self.param2 = param2
 
+    def runTest(self):
+        pass 
+
+class TestPNGs(GeneralTestCase):
+
     @classmethod
     def setUpClass(cls):
-        global settings
-        cls.settings = settings         
+        cls._con = psycopg2.connect(database=settings['database'],user=settings['user'])
+        cls._settings = settings         
 
     def setUp(self):
-#        import ipdb; ipdb.set_trace()
+        self.cur = self._con.cursor()
         pass #print("\nsetUp: setup up {0} {1}".format(self.param1,self.param2))
 
-    def runTest(self):
+    def test_pages_equal(self):
         pass #print("\nrunTest: testing {0} {1}".format(self.param1,self.param2)) # Test that depends on param 1 and 2.
 
     def tearDown(self):
@@ -33,9 +38,16 @@ class GeneralTestCase(unittest.TestCase):
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
-
-    for p1, p2 in [(1, 2), (3, 4)]:
-        suite.addTest(GeneralTestCase('runTest', p1, p2))
+    con = psycopg2.connect(database=settings['database'],user=settings['user'])
+    cur = con.cursor()
+    cur.execute('SELECT COUNT(page_number) FROM pngs_a')
+    total_pgns_a=cur.fetchone()[0]
+    cur.execute('SELECT COUNT(page_number) FROM pngs_b')
+    total_pgns_b=cur.fetchone()[0]
+    test_params =[ (i,j) for i in range(1,total_pgns_a+1) for j in range(1,total_pgns_b+1)] 
+    for p1, p2 in test_params:
+#        suite.addTest(GeneralTestCase('runTest',p1,p2))
+        suite.addTest(TestPNGs('test_pages_equal', p1, p2))
     
     return suite
 
@@ -44,12 +56,14 @@ import sys
 def main(argv=None):
     global settings
      
-    # usage: python tests/test_dynamic_unittest.py
-    parser = argparse.ArgumentParser(description="Do something.")
+    # usage: python dynamic_unittest.py --collection col1 --version 1.1 --git-commit asfd --print-style asd
+    parser = argparse.ArgumentParser(description="**add discription**")
     parser.add_argument('--collection', type=str, required=True)
     parser.add_argument('--version', type=float, required=True)
     parser.add_argument('--git-commit', type=str, required=True)
     parser.add_argument('--print-style', type=str, required=True)
+    parser.add_argument('--database', type=str, default = "training-data")
+    parser.add_argument('--user', type=str, default = "qa")
 
     args = parser.parse_args(argv)
     
