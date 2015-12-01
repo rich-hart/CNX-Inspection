@@ -6,13 +6,12 @@ settings = None
 class GeneralTestCase(unittest.TestCase):
     def __init__(self, methodName, param1=None, param2=None):
         test_name = "{0}: params=({1},{2})".format(methodName,param1,param2)
-        setattr(GeneralTestCase, test_name,self.runTest)
+        test = getattr(self,methodName)
+        setattr(GeneralTestCase, test_name,test)
         super(GeneralTestCase, self).__init__(test_name)
         self.param1 = param1
         self.param2 = param2
 
-    def runTest(self):
-        pass 
 
 class TestPNGs(GeneralTestCase):
 
@@ -23,10 +22,18 @@ class TestPNGs(GeneralTestCase):
 
     def setUp(self):
         self.cur = self._con.cursor()
-        pass #print("\nsetUp: setup up {0} {1}".format(self.param1,self.param2))
+        self.cur.execute("SELECT png FROM pngs_a WHERE page_number=1")
+        self.png_i = self.cur.fetchone()[0]
+        self.cur.execute("SELECT png FROM pngs_b WHERE page_number=1")
+        self.png_j = self.cur.fetchone()[0]      
+#        pass #print("\nsetUp: setup up {0} {1}".format(self.param1,self.param2))
 
     def test_pages_equal(self):
+#        import ipdb;ipdb.set_trace();
         pass #print("\nrunTest: testing {0} {1}".format(self.param1,self.param2)) # Test that depends on param 1 and 2.
+
+    def test_second_test_type(self):
+        pass
 
     def tearDown(self):
         pass #print("\ntearDown: tear down {0} {1}".format(self.param1,self.param2))
@@ -48,7 +55,7 @@ def load_tests(loader, tests, pattern):
     for p1, p2 in test_params:
 #        suite.addTest(GeneralTestCase('runTest',p1,p2))
         suite.addTest(TestPNGs('test_pages_equal', p1, p2))
-    
+#        suite.addTest(TestPNGs('test_second_test_type', p1, p2)) 
     return suite
 
 import argparse
@@ -58,6 +65,7 @@ def main(argv=None):
      
     # usage: python dynamic_unittest.py --collection col1 --version 1.1 --git-commit asfd --print-style asd
     parser = argparse.ArgumentParser(description="**add discription**")
+
     parser.add_argument('--collection', type=str, required=True)
     parser.add_argument('--version', type=float, required=True)
     parser.add_argument('--git-commit', type=str, required=True)
