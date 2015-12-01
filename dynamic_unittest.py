@@ -1,5 +1,8 @@
 import unittest
 import psycopg2
+import cv2
+import cv
+import numpy
 
 settings = None
 
@@ -22,20 +25,35 @@ class TestPNGs(GeneralTestCase):
 
     def setUp(self):
         self.cur = self._con.cursor()
-        self.cur.execute("SELECT png FROM pngs_a WHERE page_number=1")
-        self.png_i = self.cur.fetchone()[0]
-        self.cur.execute("SELECT png FROM pngs_b WHERE page_number=1")
-        self.png_j = self.cur.fetchone()[0]      
-#        pass #print("\nsetUp: setup up {0} {1}".format(self.param1,self.param2))
 
-    def test_pages_equal(self):
-#        import ipdb;ipdb.set_trace();
-        pass #print("\nrunTest: testing {0} {1}".format(self.param1,self.param2)) # Test that depends on param 1 and 2.
+        self.cur.execute("SELECT png FROM pngs_a WHERE page_number=(%s)",(self.param1,))
+        try:
+            data = self.cur.fetchone()[0]
+        except(TypeError):
+            raise unittest.SkipTest("png_a[{0}] is None".format(self.param1))
+        self.img_i=cv2.imdecode(numpy.asarray(data),flags=cv2.CV_LOAD_IMAGE_COLOR)
 
-    def test_second_test_type(self):
-        pass
+
+        self.cur.execute("SELECT png FROM pngs_b WHERE page_number=(%s)",(self.param1,))
+        try: 
+            data = self.cur.fetchone()[0]
+        except(TypeError):
+            raise unittest.SkipTest("png_b[{0}] is None".format(self.param2))
+        self.img_j=cv2.imdecode(numpy.asarray(data),flags=cv2.CV_LOAD_IMAGE_COLOR)
+
+
+
+    def test_imgs_equal(self):
+        self.assertTrue(numpy.array_equal(self.img_i,self.img_j))
+
+    def test_hist_equal(self):
+        self.hist_i = cv2.calcHist([self.img_i],[0],None,[256],[0,256])
+        self.hist_j = cv2.calcHist([self.img_j],[0],None,[256],[0,256])       
+        comp_value = cv2.compareHist(self.hist_i,self.hist_j,method=cv.CV_COMP_CORREL)
+        self.assertEqual(comp_value,1.0)
 
     def tearDown(self):
+#        print("tear down ran")
         pass #print("\ntearDown: tear down {0} {1}".format(self.param1,self.param2))
 
     @classmethod
@@ -52,9 +70,10 @@ def load_tests(loader, tests, pattern):
     cur.execute('SELECT COUNT(page_number) FROM pngs_b')
     total_pgns_b=cur.fetchone()[0]
     test_params =[ (i,j) for i in range(1,total_pgns_a+1) for j in range(1,total_pgns_b+1)] 
-    for p1, p2 in test_params:
+    for i, j in test_params:
 #        suite.addTest(GeneralTestCase('runTest',p1,p2))
-        suite.addTest(TestPNGs('test_pages_equal', p1, p2))
+        suite.addTest(TestPNGs('test_imgs_equal', i, j))
+        suite.addTest(TestPNGs('test_hist_equal', i, j))
 #        suite.addTest(TestPNGs('test_second_test_type', p1, p2)) 
     return suite
 
