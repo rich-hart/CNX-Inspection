@@ -4,17 +4,26 @@ import cv2
 import cv
 import numpy
 
+from sys import exc_info
+
 settings = None
+
+# Notes: use db scoring table for training current svgs
+# save the log file for long term storage for each test
+# Be able to parse the log file back into db scoring tabl
 
 class GeneralTestCase(unittest.TestCase):
     def __init__(self, methodName, param1=None, param2=None):
-        test_name = "{0}: params=({1},{2})".format(methodName,param1,param2)
+        new_test_name = "{0}({1},{2})".format(methodName,param1,param2)
         test = getattr(self,methodName)
-        setattr(GeneralTestCase, test_name,test)
-        super(GeneralTestCase, self).__init__(test_name)
+        setattr(GeneralTestCase, new_test_name,test)
+        super(GeneralTestCase, self).__init__(new_test_name)
         self.param1 = param1
         self.param2 = param2
+        self.metric = methodName
 
+#    def runTest(self):
+#        pass
 
 class TestPNGs(GeneralTestCase):
 
@@ -27,34 +36,42 @@ class TestPNGs(GeneralTestCase):
         self.cur = self._con.cursor()
 
         self.cur.execute("SELECT png FROM pngs_a WHERE page_number=(%s)",(self.param1,))
-        try:
-            data = self.cur.fetchone()[0]
-        except(TypeError):
-            raise unittest.SkipTest("png_a[{0}] is None".format(self.param1))
+
+        data = self.cur.fetchone()[0]
+
         self.img_i=cv2.imdecode(numpy.asarray(data),flags=cv2.CV_LOAD_IMAGE_COLOR)
 
+        self.cur.execute("SELECT png FROM pngs_b WHERE page_number=(%s)",(self.param2,))
+ 
+        data = self.cur.fetchone()[0]
 
-        self.cur.execute("SELECT png FROM pngs_b WHERE page_number=(%s)",(self.param1,))
-        try: 
-            data = self.cur.fetchone()[0]
-        except(TypeError):
-            raise unittest.SkipTest("png_b[{0}] is None".format(self.param2))
         self.img_j=cv2.imdecode(numpy.asarray(data),flags=cv2.CV_LOAD_IMAGE_COLOR)
 
+        # Save current attributes
+        self.setUp_attrList = None
 
+        self.setUp_attrList = dir(self)
 
-    def test_imgs_equal(self):
+    def imgs_equal(self):
         self.assertTrue(numpy.array_equal(self.img_i,self.img_j))
 
-    def test_hist_equal(self):
-        self.hist_i = cv2.calcHist([self.img_i],[0],None,[256],[0,256])
-        self.hist_j = cv2.calcHist([self.img_j],[0],None,[256],[0,256])       
-        comp_value = cv2.compareHist(self.hist_i,self.hist_j,method=cv.CV_COMP_CORREL)
-        self.assertEqual(comp_value,1.0)
+    def hist_comp_greater_threshhold(self):
+        self.threshold=.96
+        hist_i = cv2.calcHist([self.img_i],[0],None,[256],[0,256])
+        hist_j = cv2.calcHist([self.img_j],[0],None,[256],[0,256])       
+        metric = cv2.compareHist(hist_i,hist_j,method=cv.CV_COMP_CORREL)
+        self.assertGreater(metric,self.threshold)
 
     def tearDown(self):
-#        print("tear down ran")
-        pass #print("\ntearDown: tear down {0} {1}".format(self.param1,self.param2))
+#        if exc_info() == (None,None,None):
+#            test passed
+#        else:
+#            test failed
+
+        new_attrList = list(set(dir(self)) - set(self.setUp_attrList))
+        strList = ["{0} = {1}".format(attr,getattr(self,attr)) for attr in new_attrList ]
+        variable_str = ", ".join(strList)
+        print(variable_str + " ...")
 
     @classmethod
     def tearDownClass(cls):
@@ -70,11 +87,15 @@ def load_tests(loader, tests, pattern):
     cur.execute('SELECT COUNT(page_number) FROM pngs_b')
     total_pgns_b=cur.fetchone()[0]
     test_params =[ (i,j) for i in range(1,total_pgns_a+1) for j in range(1,total_pgns_b+1)] 
-    for i, j in test_params:
-#        suite.addTest(GeneralTestCase('runTest',p1,p2))
-        suite.addTest(TestPNGs('test_imgs_equal', i, j))
-        suite.addTest(TestPNGs('test_hist_equal', i, j))
-#        suite.addTest(TestPNGs('test_second_test_type', p1, p2)) 
+    test_pngs_methods=[method for method in dir(TestPNGs) if callable(getattr(TestPNGs, method))]
+    unittests_methods=[method for method in dir(unittest.TestCase) if callable(getattr(unittest.TestCase, method))]
+    test_metrics = list(set(test_pngs_methods) - set(unittests_methods))
+    for metric in test_metrics:
+        for i, j in test_params:
+    #        suite.addTest(GeneralTestCase('runTest', i ,j ))
+            suite.addTest(TestPNGs(metric, i, j))
+#            suite.addTest(TestPNGs(metric, i, j))
+    #        suite.addTest(TestPNGs('test_second_test_type', p1, p2)) 
     return suite
 
 import argparse
@@ -91,10 +112,13 @@ def main(argv=None):
     parser.add_argument('--print-style', type=str, required=True)
     parser.add_argument('--database', type=str, default = "training-data")
     parser.add_argument('--user', type=str, default = "qa")
+    parser.add_argument('--exclude-tests', type=str)
 
     args = parser.parse_args(argv)
     
-    settings = vars(args) 
+    settings = vars(args)
+
+    settings['metrics'] = None 
 
     command = "unittest -v"
 
