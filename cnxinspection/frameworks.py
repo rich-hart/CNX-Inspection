@@ -4,11 +4,12 @@ import cv2
 import cv
 import numpy
 
-START_TEST = END_TEST = "*"*70   
+START_TEST = "+"*70
+END_TEST = "#"*70
 
 ################################################################
 # FIXME: This class should be able to be run with the default  # 
-# unittests conventions, e.g. the default load_tests function. #
+# unittests conventions, e.g. the default load_
 ################################################################
 class PNGs(unittest.TestCase):
     def __init__(self, methodName, page1=None, page2=None):
@@ -44,20 +45,21 @@ class PNGs(unittest.TestCase):
 
         # Save current attributes
         self.setUp_attrList = None
-        self.setUp_attrList = dir(self)
-
-
+        self.setUp_attrList = dir(self) 
 
     def tearDown(self):
-#        if sys.exc_info() == (None,None,None):
-#            pass # test ok
-#        else:
-#            pass # test failed
+
         new_attrList = list(set(dir(self)) - set(self.setUp_attrList))
         if new_attrList:
             strList = ["({0},{1})".format(attr,getattr(self,attr)) for attr in new_attrList ]
             variable_str = " ".join(strList)
-            self._text_runner.stream.writeln(variable_str)
+            self._text_runner.stream.stream.write(variable_str+ " ")
+#            self._text_runner.stream.stream.write(variable_str)
+#        if sys.exc_info() == (None,None,None):
+#            self._text_runner.stream.stream.write('... ok \n')
+#        else:
+#            self._text_runner.stream.stream.write('... FAIL \n')
+
 
     @classmethod
     def tearDownClass(cls):

@@ -56,6 +56,11 @@ def main(argv=None):
     settings = vars(args) 
 
     command = "unittest".split(" ")
+
+    ######################################################
+    # FIXME: replace TextTestRunner with python logger   #
+    # this will fix issue with parsing output            #
+    ######################################################
     
     log_file = 'log_file.txt'
     with open(log_file, "w") as f:  
